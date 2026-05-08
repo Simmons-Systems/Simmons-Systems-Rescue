@@ -18,8 +18,9 @@ SYSRESCUE_SIG_URL="${SYSRESCUE_ISO_URL}.asc"
 # SystemRescue release-signing key fingerprint (Francois Dupoux)
 SYSRESCUE_SIGNING_KEY="A2A4FB72F60429AC7C13923753DDFE5BDBC2EE3B"
 
-# Size of writable FAT32 partition appended after the ISO (MB)
-WRITABLE_PART_MB=512
+# Size of writable FAT32 partition appended after the ISO (MB).
+# Override at the call site: WRITABLE_PART_MB=128 ./bin/build-rescue-usb.sh /dev/sdX
+WRITABLE_PART_MB="${WRITABLE_PART_MB:-512}"
 
 dry_run=0
 output=""
