@@ -142,7 +142,7 @@ build_image() {
         # free MBR slot for the new partition). Pick the largest partition
         # by size — the ESP is always <8MB while our writable FAT is >100MB.
         local part
-        part="$(lsblk -bnpo NAME,SIZE,TYPE "$out" \
+        part="$(lsblk -blnpo NAME,SIZE,TYPE "$out" \
             | awk '$3=="part" {print $2, $1}' \
             | sort -nr | head -1 | awk '{print $2}')"
         sudo mkfs.vfat -n "RESCUE" "$part"
