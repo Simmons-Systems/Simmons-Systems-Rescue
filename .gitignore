@@ -1,0 +1,23 @@
+# Build artifacts
+dist/
+build/
+*.img
+*.iso
+*.xz
+
+# Local downloads cache (build scripts cache upstream ISO/IMG here)
+.cache/
+
+# Local results (collect-results.sh default destination)
+nuc-burnin-results/
+
+# Editor / OS noise
+*.swp
+*~
+.DS_Store
+.idea/
+.vscode/
+
+# Python venv (if anyone adds Python helpers later)
+.venv/
+__pycache__/

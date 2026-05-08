@@ -1,0 +1,4 @@
+# Opt into the canonical git-standards "release" tier.
+# When set, /git-standards will materialize and maintain release.yml + release-drafter.yml.
+# Reference: ~/github/wiki.simmons.systems/operations/new-github-repo-setup.md
+release_artifacts: true

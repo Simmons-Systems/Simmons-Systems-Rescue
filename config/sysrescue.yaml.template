@@ -1,0 +1,19 @@
+# SystemRescue effective config — consumed at boot from the FAT32 partition
+# root. Documented at https://www.system-rescue.org/manual/Configuring_SystemRescue/
+#
+# This file is rendered into the USB image by bin/build-rescue-usb.sh.
+
+global:
+    # Don't prompt for keyboard / locale at boot — bake American English defaults.
+    nofirewall: false
+    rootpass: ""
+
+autorun:
+    # Where the autorun chain lives on the boot media.
+    ar_source: "{auto}"
+    # Don't wait for a keypress at the end — we want walk-away.
+    ar_nowait: true
+    # Continue running subsequent test scripts even if one fails.
+    ar_ignorefail: true
+    # Run autorun, autorun0..autorunF if present; we use autorun0.
+    ar_suffixes: "0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F"

@@ -1,0 +1,108 @@
+#!/bin/bash
+# Simmons-Systems-Rescue — autorun entry point.
+#
+# Invoked by SystemRescue's autorun mechanism (see sysrescue.yaml on the boot
+# partition). Runs every script in autorun/tests/ in lexical order, captures
+# all output to a results file on the writable FAT32 partition, then powers
+# the box off.
+#
+# Boot params expected (set in sysrescue.yaml):
+#   ar_nowait        — don't wait for keypress at end of autorun chain
+#   ar_ignorefail    — continue chain on per-test failure
+#
+# Reference: https://www.system-rescue.org/manual/Run_your_own_scripts_with_autorun/
+
+set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib.sh
+source "${SCRIPT_DIR}/lib.sh"
+
+# The writable FAT32 partition that the SystemRescue USB writer creates is
+# auto-mounted at /run/archiso/cowspace or similar; we look for our own marker
+# file to identify it. Build-rescue-usb.sh drops a `.simsys-rescue` file on
+# the partition root.
+find_results_partition() {
+    local mp
+    for mp in /run/sysrescue-config /run/archiso/bootmnt /run/usbstick /mnt/usb; do
+        [[ -f "${mp}/.simsys-rescue" ]] && {
+            echo "$mp"
+            return 0
+        }
+    done
+    # Fallback: probe every mounted vfat for the marker
+    while read -r _src tgt fs _; do
+        [[ "$fs" == "vfat" ]] || continue
+        [[ -f "${tgt}/.simsys-rescue" ]] && {
+            echo "$tgt"
+            return 0
+        }
+    done < <(findmnt -rno SOURCE,TARGET,FSTYPE)
+    return 1
+}
+
+setup_results_dir() {
+    local part
+    if part="$(find_results_partition)"; then
+        RESULTS_DIR="${part}/results"
+        # Remount rw if we landed on a read-only mount
+        mount -o remount,rw "$part" 2> /dev/null || true
+    else
+        log "WARN: no writable FAT32 partition found; results will live in tmpfs (/run/results) and will NOT survive reboot"
+        RESULTS_DIR=/run/results
+    fi
+    mkdir -p "$RESULTS_DIR"
+    export RESULTS_DIR
+}
+
+main() {
+    setup_results_dir
+    local hostname
+    hostname="$(hostname 2> /dev/null || echo unknown)"
+    local timestamp
+    timestamp="$(date -u +%Y%m%d-%H%M%S)"
+    local results_file="${RESULTS_DIR}/results-${hostname}-${timestamp}.txt"
+
+    {
+        echo "Simmons-Systems-Rescue autorun"
+        echo "Timestamp (UTC): $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        echo "Hostname:        ${hostname}"
+        echo "Kernel:          $(uname -r)"
+        echo "STRESS_DURATION_SEC: ${STRESS_DURATION_SEC}"
+        echo "MEMTESTER_PCT:       ${MEMTESTER_PCT}"
+        echo
+
+        local overall=0
+        local script
+        for script in "${SCRIPT_DIR}/tests/"*.sh; do
+            [[ -e "$script" ]] || continue
+            section "$(basename "$script" .sh)"
+            if bash "$script"; then
+                pass "$(basename "$script" .sh)"
+            else
+                local rc=$?
+                fail "$(basename "$script" .sh) exited $rc"
+                overall=1
+            fi
+        done
+
+        section "OVERALL"
+        if [[ $overall -eq 0 ]]; then
+            echo "OVERALL: PASS"
+        else
+            echo "OVERALL: FAIL — see test sections above"
+        fi
+    } 2>&1 | tee "$results_file"
+
+    # Sync the FAT32 partition so the results file actually hits the USB
+    # before poweroff cuts power.
+    sync
+    sleep 5
+
+    log "Results written to ${results_file}"
+    log "Powering off in 10 seconds..."
+    sleep 10
+    poweroff
+}
+
+main "$@"
