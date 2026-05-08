@@ -135,9 +135,16 @@ build_image() {
     if [[ "${out}" == /dev/* ]]; then
         sudo parted -s "$out" mkpart primary fat32 "${iso_size_mb}MiB" 100%
         sudo partprobe "$out" || true
-        # Identify the partition we just created (highest-numbered)
+        sleep 1
+        # Identify the partition we just created. We can't use tail -1 on
+        # NAME order because hybrid ISOs reserve a tiny EFI System Partition
+        # whose number ends up greater than ours (parted reuses the first
+        # free MBR slot for the new partition). Pick the largest partition
+        # by size — the ESP is always <8MB while our writable FAT is >100MB.
         local part
-        part="$(lsblk -lnpo NAME "$out" | tail -1)"
+        part="$(lsblk -bnpo NAME,SIZE,TYPE "$out" \
+            | awk '$3=="part" {print $2, $1}' \
+            | sort -nr | head -1 | awk '{print $2}')"
         sudo mkfs.vfat -n "RESCUE" "$part"
         local mp
         mp="$(mktemp -d)"
