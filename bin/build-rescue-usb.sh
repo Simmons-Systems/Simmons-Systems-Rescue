@@ -15,8 +15,11 @@ CACHE_DIR="${REPO_ROOT}/.cache"
 SYSRESCUE_VERSION="${SYSRESCUE_VERSION:-13.00}"
 SYSRESCUE_ISO_URL="https://fastly-cdn.system-rescue.org/releases/${SYSRESCUE_VERSION}/systemrescue-${SYSRESCUE_VERSION}-amd64.iso"
 SYSRESCUE_SIG_URL="${SYSRESCUE_ISO_URL}.asc"
-# SystemRescue release-signing key fingerprint (Francois Dupoux)
-SYSRESCUE_SIGNING_KEY="A2A4FB72F60429AC7C13923753DDFE5BDBC2EE3B"
+# SystemRescue release-signing primary-key fingerprint (Francois Dupoux,
+# generated 2021-07-04, valid through 2039-12-31). The signing subkey is
+# 62989046EB5C7E985ECDF5DD3B0FEA9BE13CA3C9 — fetching the primary pulls it.
+SYSRESCUE_SIGNING_KEY="0FF11AF081E9834559481203 7091115F8320B897"
+SYSRESCUE_SIGNING_KEY="${SYSRESCUE_SIGNING_KEY// /}"
 
 # Size of writable FAT32 partition appended after the ISO (MB).
 # Override at the call site: WRITABLE_PART_MB=128 ./bin/build-rescue-usb.sh /dev/sdX
