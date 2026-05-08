@@ -14,9 +14,10 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CACHE_DIR="${REPO_ROOT}/.cache"
-MEMTEST_VERSION="${MEMTEST_VERSION:-7.20}"
-# Upstream USB image (auto-installs to USB; we just dd it). 64-bit BIOS+UEFI.
-MEMTEST_URL="https://memtest.org/download/v${MEMTEST_VERSION}/mt86plus_${MEMTEST_VERSION}.usb.zip"
+MEMTEST_VERSION="${MEMTEST_VERSION:-8.00}"
+# Upstream hybrid ISO (boots BIOS + UEFI, dd-able to USB).
+# v8.00+ retired the dedicated .usb.zip in favor of the same hybrid ISO.
+MEMTEST_URL="https://memtest.org/download/v${MEMTEST_VERSION}/mt86plus_${MEMTEST_VERSION}_x86_64.iso.zip"
 
 dry_run=0
 output=""
@@ -73,8 +74,8 @@ if [[ -n "$target" && $dry_run -eq 0 ]]; then
 fi
 
 mkdir -p "$CACHE_DIR"
-zip_path="${CACHE_DIR}/mt86plus_${MEMTEST_VERSION}.usb.zip"
-img_path="${CACHE_DIR}/mt86plus_${MEMTEST_VERSION}.usb.img"
+zip_path="${CACHE_DIR}/mt86plus_${MEMTEST_VERSION}_x86_64.iso.zip"
+img_path="${CACHE_DIR}/mt86plus_${MEMTEST_VERSION}.iso"
 
 if [[ $dry_run -eq 1 ]]; then
     echo "==> Dry run: would download ${MEMTEST_URL} and build ${work_path}"
@@ -93,10 +94,8 @@ fi
 # Memtest86+ doesn't publish a GPG-signed checksum file; we verify the SHA256
 # against a pinned value. Refresh on version bump.
 case "$MEMTEST_VERSION" in
-    7.20)
-        # SHA256 must be confirmed at first build; populate after manual verify
-        # against https://memtest.org/
-        expected_sha=""
+    8.00)
+        expected_sha="df242b91b55571d5126e8236ce7942851b7015331aaf48cfb440a8f9d2c4cc6f"
         ;;
     *)
         expected_sha=""
@@ -115,16 +114,16 @@ else
     echo "==> WARN: no pinned SHA256 for v${MEMTEST_VERSION}; build will proceed but please pin one."
 fi
 
-echo "==> Extracting USB image..."
+echo "==> Extracting hybrid ISO..."
 (cd "$CACHE_DIR" && unzip -o "$zip_path" >&2)
 
-# The upstream zip contains an installer image whose name varies; locate it
-extracted_img="$(find "$CACHE_DIR" -maxdepth 1 -name 'memtest*.usb.img' -o -name 'mt86plus_*.img' | head -1)"
-if [[ -z "$extracted_img" ]]; then
-    echo "ERROR: couldn't find extracted .img inside the upstream zip" >&2
+# The upstream zip contains memtest.iso. Rename to versioned cache name.
+if [[ -f "${CACHE_DIR}/memtest.iso" ]]; then
+    mv "${CACHE_DIR}/memtest.iso" "$img_path"
+elif [[ ! -f "$img_path" ]]; then
+    echo "ERROR: couldn't find extracted memtest.iso inside the upstream zip" >&2
     exit 5
 fi
-mv "$extracted_img" "$img_path"
 
 echo "==> Writing ${img_path} -> ${work_path}..."
 if [[ "$work_path" == /dev/* ]]; then
