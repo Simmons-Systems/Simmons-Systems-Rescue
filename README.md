@@ -8,12 +8,13 @@ boots from USB.
 
 ## What's in the box
 
-The kit ships **two USB images**:
+The kit ships **three USB images**:
 
 | USB | Purpose | Boots under stock Secure Boot? | Walk-away? |
 |-----|---------|-------------------------------|------------|
 | `rescue.img` | SystemRescue + autorun: 2-hour stress test, `memtester` (~95% of RAM), `smartctl` per drive, full hardware inventory, auto-poweroff | Yes (signed shim) | Yes |
 | `memtest.img` | Memtest86+ (open source) for true bare-metal RAM testing | No — disable Secure Boot once in BIOS | Not yet — runs continuously, requires monitor (Phase 2 ships a fork with auto-halt) |
+| `wipe.img` | NIST 800-88 disk sanitization — two boot paths: Wizard (interactive per-drive) and eWaste (auto-wipe all after 5-min countdown). HMAC-signed JSON audit log. | Yes (signed shim) | Yes (eWaste mode) |
 
 ## Quick start
 
@@ -21,6 +22,7 @@ The kit ships **two USB images**:
 # Build both USB images locally
 ./bin/build-rescue-usb.sh /dev/sdX     # interactive confirmation; refuses /dev/sda
 ./bin/build-memtest-usb.sh /dev/sdY
+./bin/build-wipe-usb.sh /dev/sdZ       # NIST 800-88 disk wipe (label with red tape)
 
 # Or grab the latest release
 gh release download --repo Simmons-Systems/Simmons-Systems-Rescue --pattern '*.img.xz'
@@ -33,6 +35,7 @@ Workflow per box:
 2. Power on. Walk away. ~2 hours later it powers itself off.
 3. Pull the USB; on your dev box run `./bin/collect-results.sh /dev/sdX` to read the results file.
 4. (Optional, if you want full RAM testing) Plug `memtest.img` USB, power on with monitor attached, run overnight.
+5. (For decommissioning) Plug `wipe.img` USB, pick Wizard (selective) or eWaste (wipe all), collect audit log from USB.
 
 ## Documentation
 
