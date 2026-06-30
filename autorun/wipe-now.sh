@@ -116,15 +116,17 @@ done
 for entry in "${drives[@]}"; do
     IFS='|' read -r name rest <<< "$entry"
     if [[ -f "/tmp/wipe-result-${name}.json" ]]; then
-        local_result=$(cat "/tmp/wipe-result-${name}.json")
         python3 -c "
 import json
-with open('$AUDIT_FILE') as f:
+import sys
+with open(sys.argv[1]) as f:
     d = json.load(f)
-d['drives'].append(json.loads('''$local_result'''))
-with open('$AUDIT_FILE', 'w') as f:
+with open(sys.argv[2]) as f:
+    local_result = json.load(f)
+d['drives'].append(local_result)
+with open(sys.argv[1], 'w') as f:
     json.dump(d, f, indent=2)
-" 2>/dev/null
+" "$AUDIT_FILE" "/tmp/wipe-result-${name}.json" 2>/dev/null
     fi
 done
 
