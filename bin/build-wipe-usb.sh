@@ -143,9 +143,9 @@ build_image() {
         openssl rand -hex 32 > "$hmac_tmp"
         mcopy -i "$fat_img" "$hmac_tmp" ::/hmac.key
         rm -f "$hmac_tmp"
-        : > /tmp/.simsys-wipe.marker
-        mcopy -i "$fat_img" /tmp/.simsys-wipe.marker ::/.simsys-wipe
-        rm -f /tmp/.simsys-wipe.marker
+        marker_file="$(mktemp)"
+        mcopy -i "$fat_img" "$marker_file" ::/.simsys-wipe
+        rm -f "$marker_file"
         dd if="$fat_img" of="$out" bs=1M seek="$iso_size_mb" \
             count="$WRITABLE_PART_MB" conv=notrunc status=none
         rm -f "$fat_img"

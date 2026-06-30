@@ -6,6 +6,9 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}/wipe-lib.sh"
 
+WIPE_TMP_DIR=$(mktemp -d)
+trap 'rm -rf "$WIPE_TMP_DIR"' EXIT
+
 INCLUDE_USB="false"
 for arg in "$@"; do
     [[ "$arg" == "--include-usb" ]] && INCLUDE_USB="true"
@@ -66,7 +69,7 @@ for entry in "${drives[@]}"; do
         errors=""
         result="success"
 
-        if wipe_drive "$name" "$dtype" > /tmp/wipe-${name}.log 2>&1; then
+        if wipe_drive "$name" "$dtype" > "$WIPE_TMP_DIR/wipe-${name}.log" 2>&1; then
             log "Wipe of /dev/$name completed"
         else
             result="failed"
@@ -84,7 +87,7 @@ for entry in "${drives[@]}"; do
         completed=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
         # Write per-drive result to a temp file for the parent to collect
-        cat > "/tmp/wipe-result-${name}.json" << DRIVEEOF
+        cat > "$WIPE_TMP_DIR/wipe-result-${name}.json" << DRIVEEOF
 {
   "device": "/dev/${name}",
   "model": "${model}",
@@ -115,8 +118,8 @@ done
 # Collect per-drive results into audit
 for entry in "${drives[@]}"; do
     IFS='|' read -r name rest <<< "$entry"
-    if [[ -f "/tmp/wipe-result-${name}.json" ]]; then
-        local_result=$(cat "/tmp/wipe-result-${name}.json")
+    if [[ -f "$WIPE_TMP_DIR/wipe-result-${name}.json" ]]; then
+        local_result=$(cat "$WIPE_TMP_DIR/wipe-result-${name}.json")
         python3 -c "
 import json
 with open('$AUDIT_FILE') as f:

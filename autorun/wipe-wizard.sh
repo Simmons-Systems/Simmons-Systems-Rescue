@@ -5,6 +5,9 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}/wipe-lib.sh"
 
+WIPE_TMP_DIR=$(mktemp -d)
+trap 'rm -rf "$WIPE_TMP_DIR"' EXIT
+
 printf "${CYAN}${BOLD}"
 cat << 'BANNER'
  __        _____ ____  _____   __        _____ _____   _    ____  ____
@@ -110,7 +113,7 @@ for entry in "${confirmed[@]}"; do
     errors=""
     result="success"
 
-    if wipe_drive "$name" "$dtype" 2>&1 | tee -a /tmp/wipe-${name}.log; then
+    if wipe_drive "$name" "$dtype" 2>&1 | tee -a "$WIPE_TMP_DIR/wipe-${name}.log"; then
         log "Wipe of /dev/$name completed"
     else
         result="failed"
