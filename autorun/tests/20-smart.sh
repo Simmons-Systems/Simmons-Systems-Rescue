@@ -16,7 +16,7 @@ for d in /dev/sd?; do
         log "WARN: smartctl failed on $d (likely USB-pass-through limitation)"
         continue
     fi
-    if smartctl -H "$d" 2> /dev/null | grep -qE "result: FAILED"; then
+    if smartctl -H "$d" 2>/dev/null | grep -qE "result: FAILED"; then
         fail "$d reports overall SMART status FAILED"
         failures=$((failures + 1))
     fi
@@ -27,7 +27,7 @@ for d in /dev/nvme?n?; do
     [[ -b "$d" ]] || continue
     section "smartctl -a $d"
     smartctl -a "$d" 2>&1 || log "WARN: smartctl failed on $d"
-    if smartctl -H "$d" 2> /dev/null | grep -qE "result: FAILED"; then
+    if smartctl -H "$d" 2>/dev/null | grep -qE "result: FAILED"; then
         fail "$d reports overall SMART status FAILED"
         failures=$((failures + 1))
     fi

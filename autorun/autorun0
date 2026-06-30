@@ -46,7 +46,7 @@ setup_results_dir() {
     if part="$(find_results_partition)"; then
         RESULTS_DIR="${part}/results"
         # Remount rw if we landed on a read-only mount
-        mount -o remount,rw "$part" 2> /dev/null || true
+        mount -o remount,rw "$part" 2>/dev/null || true
     else
         log "WARN: no writable FAT32 partition found; results will live in tmpfs (/run/results) and will NOT survive reboot"
         RESULTS_DIR=/run/results
@@ -58,7 +58,7 @@ setup_results_dir() {
 main() {
     setup_results_dir
     local hostname
-    hostname="$(hostname 2> /dev/null || echo unknown)"
+    hostname="$(hostname 2>/dev/null || echo unknown)"
     local timestamp
     timestamp="$(date -u +%Y%m%d-%H%M%S)"
     local results_file="${RESULTS_DIR}/results-${hostname}-${timestamp}.txt"

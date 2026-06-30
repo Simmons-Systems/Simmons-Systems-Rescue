@@ -132,7 +132,7 @@ else
     cp "$img_path" "$work_path"
 fi
 
-cat << EOF
+cat <<EOF
 
 ==> SUCCESS
 

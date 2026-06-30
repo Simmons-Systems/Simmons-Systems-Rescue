@@ -105,7 +105,7 @@ download_iso() {
     fi
     echo "==> Verifying signature..."
     # Import key if missing, then verify
-    if ! gpg --list-keys "$SYSRESCUE_SIGNING_KEY" > /dev/null 2>&1; then
+    if ! gpg --list-keys "$SYSRESCUE_SIGNING_KEY" >/dev/null 2>&1; then
         gpg --keyserver keyserver.ubuntu.com --recv-keys "$SYSRESCUE_SIGNING_KEY" \
             || gpg --keyserver keys.openpgp.org --recv-keys "$SYSRESCUE_SIGNING_KEY"
     fi
@@ -165,7 +165,7 @@ build_image() {
         mcopy -i "$fat_img" -s "${REPO_ROOT}/autorun" ::/
         mcopy -i "$fat_img" "${REPO_ROOT}/config/default.env" ::/
         mcopy -i "$fat_img" "${REPO_ROOT}/config/sysrescue.yaml.template" ::/sysrescue.yaml
-        : > /tmp/.simsys-rescue.marker
+        : >/tmp/.simsys-rescue.marker
         mcopy -i "$fat_img" /tmp/.simsys-rescue.marker ::/.simsys-rescue
         rm -f /tmp/.simsys-rescue.marker
         dd if="$fat_img" of="$out" bs=1M seek="$iso_size_mb" \
@@ -193,7 +193,7 @@ fi
 download_iso
 build_image "$work_path"
 
-cat << EOF
+cat <<EOF
 
 ==> SUCCESS
 

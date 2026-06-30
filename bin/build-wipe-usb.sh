@@ -32,10 +32,22 @@ usage() {
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -h | --help) usage 0 ;;
-        --dry-run) dry_run=1; shift ;;
-        --output) output="$2"; shift 2 ;;
-        /dev/*) target="$1"; shift ;;
-        *) echo "Unknown arg: $1" >&2; usage 1 ;;
+        --dry-run)
+            dry_run=1
+            shift
+            ;;
+        --output)
+            output="$2"
+            shift 2
+            ;;
+        /dev/*)
+            target="$1"
+            shift
+            ;;
+        *)
+            echo "Unknown arg: $1" >&2
+            usage 1
+            ;;
     esac
 done
 
@@ -60,7 +72,10 @@ elif [[ -n "$target" ]]; then
         lsblk "$target"
         echo
         read -r -p "Type 'yes' to overwrite ${target}: " confirm
-        [[ "$confirm" == "yes" ]] || { echo "Aborted."; exit 3; }
+        [[ "$confirm" == "yes" ]] || {
+            echo "Aborted."
+            exit 3
+        }
     fi
 fi
 
@@ -79,7 +94,7 @@ download_iso() {
         curl -fL --retry 3 -o "$sig_path" "$SYSRESCUE_SIG_URL"
     fi
     echo "==> Verifying signature..."
-    if ! gpg --list-keys "$SYSRESCUE_SIGNING_KEY" > /dev/null 2>&1; then
+    if ! gpg --list-keys "$SYSRESCUE_SIGNING_KEY" >/dev/null 2>&1; then
         gpg --keyserver keyserver.ubuntu.com --recv-keys "$SYSRESCUE_SIGNING_KEY" \
             || gpg --keyserver keys.openpgp.org --recv-keys "$SYSRESCUE_SIGNING_KEY"
     fi
@@ -89,7 +104,7 @@ download_iso() {
 generate_hmac_key() {
     local key_file="$1"
     if [[ ! -f "$key_file" ]]; then
-        openssl rand -hex 32 > "$key_file"
+        openssl rand -hex 32 >"$key_file"
         echo "==> Generated HMAC key: $key_file"
     fi
 }
@@ -140,10 +155,10 @@ build_image() {
         mcopy -i "$fat_img" "${REPO_ROOT}/autorun/wipe-now.sh" ::/autorun/
         local hmac_tmp
         hmac_tmp="$(mktemp)"
-        openssl rand -hex 32 > "$hmac_tmp"
+        openssl rand -hex 32 >"$hmac_tmp"
         mcopy -i "$fat_img" "$hmac_tmp" ::/hmac.key
         rm -f "$hmac_tmp"
-        : > /tmp/.simsys-wipe.marker
+        : >/tmp/.simsys-wipe.marker
         mcopy -i "$fat_img" /tmp/.simsys-wipe.marker ::/.simsys-wipe
         rm -f /tmp/.simsys-wipe.marker
         dd if="$fat_img" of="$out" bs=1M seek="$iso_size_mb" \
@@ -166,7 +181,7 @@ fi
 download_iso
 build_image "$work_path"
 
-cat << EOF
+cat <<EOF
 
 ==> SUCCESS — Disk Wipe USB built
 

@@ -6,7 +6,7 @@ set -uo pipefail
 # shellcheck source=../lib.sh
 source "$(dirname "$0")/../lib.sh"
 
-if ! command -v memtester > /dev/null; then
+if ! command -v memtester >/dev/null; then
     fail "memtester not installed in SystemRescue ISO"
     exit 1
 fi

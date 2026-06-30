@@ -16,7 +16,7 @@ mapfile -t scripts < <(
 echo "==> shellcheck on ${#scripts[@]} scripts"
 shellcheck --severity=warning --shell=bash "${scripts[@]}"
 
-if command -v shfmt > /dev/null; then
+if command -v shfmt >/dev/null; then
     echo "==> shfmt -d -i 4 -ci -bn"
     shfmt -d -i 4 -ci -bn "${scripts[@]}"
 else

@@ -10,8 +10,8 @@ for iface_path in /sys/class/net/*; do
     iface="$(basename "$iface_path")"
     [[ "$iface" == "lo" ]] && continue
     section "interface ${iface}"
-    ip -br addr show "$iface" 2> /dev/null
-    ethtool "$iface" 2> /dev/null | grep -E "(Speed|Duplex|Link detected|driver|firmware-version):" || true
+    ip -br addr show "$iface" 2>/dev/null
+    ethtool "$iface" 2>/dev/null | grep -E "(Speed|Duplex|Link detected|driver|firmware-version):" || true
 done
 
 exit 0

@@ -69,7 +69,7 @@ if [[ ! -d "$results_dir" ]]; then
     exit 4
 fi
 
-latest="$(ls -1t "$results_dir"/results-*.txt 2> /dev/null | head -1)"
+latest="$(ls -1t "$results_dir"/results-*.txt 2>/dev/null | head -1)"
 if [[ -z "$latest" ]]; then
     echo "ERROR: no results-*.txt files found in ${results_dir}" >&2
     exit 5

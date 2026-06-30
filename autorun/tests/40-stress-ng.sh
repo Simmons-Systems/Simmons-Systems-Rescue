@@ -6,7 +6,7 @@ set -uo pipefail
 # shellcheck source=../lib.sh
 source "$(dirname "$0")/../lib.sh"
 
-if ! command -v stress-ng > /dev/null; then
+if ! command -v stress-ng >/dev/null; then
     fail "stress-ng not installed in SystemRescue ISO"
     exit 1
 fi

@@ -16,7 +16,7 @@ if grep -q "ssr.include-usb" /proc/cmdline 2>/dev/null; then
 fi
 
 printf "${RED}${BOLD}"
-cat << 'BANNER'
+cat <<'BANNER'
  __        _____ ____  _____     _   _  _____        __
  \ \      / /_ _|  _ \| ____|   | \ | |/ _ \ \      / /
   \ \ /\ / / | || |_) |  _|     |  \| | | | \ \ /\ / /
@@ -59,14 +59,14 @@ log "Countdown complete — starting parallel wipe of ${#drives[@]} drive(s)"
 
 pids=()
 for entry in "${drives[@]}"; do
-    IFS='|' read -r name model serial size rota tran dtype nist_tier method_desc <<< "$entry"
+    IFS='|' read -r name model serial size rota tran dtype nist_tier method_desc <<<"$entry"
     (
         size_bytes=$(blockdev --getsize64 "/dev/$name" 2>/dev/null || echo 0)
         started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
         errors=""
         result="success"
 
-        if wipe_drive "$name" "$dtype" > /tmp/wipe-${name}.log 2>&1; then
+        if wipe_drive "$name" "$dtype" >/tmp/wipe-${name}.log 2>&1; then
             log "Wipe of /dev/$name completed"
         else
             result="failed"
@@ -84,7 +84,7 @@ for entry in "${drives[@]}"; do
         completed=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
         # Write per-drive result to a temp file for the parent to collect
-        cat > "/tmp/wipe-result-${name}.json" << DRIVEEOF
+        cat >"/tmp/wipe-result-${name}.json" <<DRIVEEOF
 {
   "device": "/dev/${name}",
   "model": "${model}",
@@ -114,7 +114,7 @@ done
 
 # Collect per-drive results into audit
 for entry in "${drives[@]}"; do
-    IFS='|' read -r name rest <<< "$entry"
+    IFS='|' read -r name rest <<<"$entry"
     if [[ -f "/tmp/wipe-result-${name}.json" ]]; then
         local_result=$(cat "/tmp/wipe-result-${name}.json")
         python3 -c "
