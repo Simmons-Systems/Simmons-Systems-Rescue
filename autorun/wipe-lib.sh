@@ -6,7 +6,6 @@ set -euo pipefail
 
 SSR_WIPE_VERSION="1.0.0"
 AUDIT_DIR="${AUDIT_DIR:-/run/audit}"
-HMAC_KEY_FILE="${HMAC_KEY_FILE:-/run/sysrescue-config/hmac.key}"
 
 RED='\033[1;31m'
 GREEN='\033[1;32m'
@@ -16,7 +15,10 @@ BOLD='\033[1m'
 RESET='\033[0m'
 
 log() { printf '[%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1"; }
-die() { printf "${RED}FATAL: %s${RESET}\n" "$1" >&2; exit 1; }
+die() {
+    printf "${RED}FATAL: %s${RESET}\n" "$1" >&2
+    exit 1
+}
 
 boot_device() {
     local root_dev
@@ -89,13 +91,13 @@ detect_drive_type() {
 nist_method_for_type() {
     local dtype="$1"
     case "$dtype" in
-        nvme-ssd)      echo "Purge|Block Erase|nvme sanitize -a 2" ;;
-        nvme-ssd-sed)  echo "Purge|Crypto Erase|nvme sanitize -a 4" ;;
-        sata-ssd)      echo "Purge|ATA Secure Erase Enhanced|hdparm --security-erase-enhanced" ;;
-        sata-ssd-sed)  echo "Purge|Crypto Erase|sedutil-cli --revertNoErase" ;;
-        hdd)           echo "Purge|Random overwrite + verify|nwipe -m random -r 1 --verify=last" ;;
-        usb-flash)     echo "Clear|Random overwrite (best-effort)|nwipe -m random" ;;
-        *)             echo "Clear|Random overwrite (fallback)|nwipe -m random" ;;
+        nvme-ssd) echo "Purge|Block Erase|nvme sanitize -a 2" ;;
+        nvme-ssd-sed) echo "Purge|Crypto Erase|nvme sanitize -a 4" ;;
+        sata-ssd) echo "Purge|ATA Secure Erase Enhanced|hdparm --security-erase-enhanced" ;;
+        sata-ssd-sed) echo "Purge|Crypto Erase|sedutil-cli --revertNoErase" ;;
+        hdd) echo "Purge|Random overwrite + verify|nwipe -m random -r 1 --verify=last" ;;
+        usb-flash) echo "Clear|Random overwrite (best-effort)|nwipe -m random" ;;
+        *) echo "Clear|Random overwrite (fallback)|nwipe -m random" ;;
     esac
 }
 
@@ -169,7 +171,7 @@ wipe_drive() {
             nwipe --autonuke --method=random --rounds=1 --verify=last "/dev/$dev" 2>&1
             return $?
             ;;
-        usb-flash|*)
+        usb-flash | *)
             nwipe --autonuke --method=random "/dev/$dev" 2>&1
             return $?
             ;;
@@ -216,7 +218,7 @@ init_audit() {
     hostname=$(hostname 2>/dev/null || echo "unknown")
     AUDIT_FILE="${AUDIT_DIR}/${hostname}-${ts}.json"
 
-    cat > "$AUDIT_FILE" << EOF
+    cat >"$AUDIT_FILE" <<EOF
 {
   "ssr_wipe_version": "${SSR_WIPE_VERSION}",
   "mode": "${mode}",
@@ -238,7 +240,8 @@ append_drive_audit() {
     local verify_ok="${12:-}" errors="${13:-}"
 
     local entry
-    entry=$(cat << EOF
+    entry=$(
+        cat <<EOF
     {
       "device": "/dev/${dev}",
       "model": "${model}",
@@ -281,14 +284,8 @@ with open('$tmp', 'w') as f:
     json.dump(d, f, indent=2)
 " 2>/dev/null && mv "$tmp" "$audit_file" || rm -f "$tmp"
 
-    if [[ -f "$HMAC_KEY_FILE" ]]; then
-        openssl dgst -sha256 -hmac "$(cat "$HMAC_KEY_FILE")" -hex "$audit_file" | \
-            awk '{print $NF}' > "${audit_file}.hmac"
-        log "HMAC signature written to ${audit_file}.hmac"
-    fi
-
     if command -v qrencode &>/dev/null; then
-        qrencode -t ANSIUTF8 < "$audit_file" 2>/dev/null || true
+        qrencode -t ANSIUTF8 <"$audit_file" 2>/dev/null || true
     fi
 
     printf "\n${GREEN}Audit log: %s${RESET}\n" "$audit_file"

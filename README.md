@@ -14,7 +14,7 @@ The kit ships **three USB images**:
 |-----|---------|-------------------------------|------------|
 | `rescue.img` | SystemRescue + autorun: 2-hour stress test, `memtester` (~95% of RAM), `smartctl` per drive, full hardware inventory, auto-poweroff | Yes (signed shim) | Yes |
 | `memtest.img` | Memtest86+ (open source) for true bare-metal RAM testing | No — disable Secure Boot once in BIOS | Not yet — runs continuously, requires monitor (Phase 2 ships a fork with auto-halt) |
-| `wipe.img` | NIST 800-88 disk sanitization — two boot paths: Wizard (interactive per-drive) and eWaste (auto-wipe all after 5-min countdown). HMAC-signed JSON audit log. | Yes (signed shim) | Yes (eWaste mode) |
+| `wipe.img` | NIST 800-88 disk sanitization — two boot paths: Wizard (interactive per-drive) and eWaste (auto-wipe all after 5-min countdown). JSON audit log. | Yes (signed shim) | Yes (eWaste mode) |
 
 ## Quick start
 
