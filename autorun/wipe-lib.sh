@@ -157,8 +157,10 @@ wipe_drive() {
                 nwipe --autonuke --method=random --rounds=1 --verify=last "/dev/$dev" 2>&1
                 return $?
             fi
-            hdparm --user-master u --security-set-pass SSRWipe "/dev/$dev" 2>&1
-            hdparm --user-master u --security-erase-enhanced SSRWipe "/dev/$dev" 2>&1
+            local wipe_pass
+            wipe_pass=$(openssl rand -hex 16)
+            hdparm --user-master u --security-set-pass "$wipe_pass" "/dev/$dev" 2>&1
+            hdparm --user-master u --security-erase-enhanced "$wipe_pass" "/dev/$dev" 2>&1
             return $?
             ;;
         sata-ssd-sed)
