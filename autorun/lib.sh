@@ -24,16 +24,3 @@ fail() {
     printf 'FAIL: %s\n' "$1" >&2
     return 1
 }
-
-# Run a command and capture exit code without aborting on -e.
-run_or_warn() {
-    local desc="$1"
-    shift
-    if "$@"; then
-        return 0
-    else
-        local rc=$?
-        log "WARN: $desc exited with code $rc"
-        return "$rc"
-    fi
-}
