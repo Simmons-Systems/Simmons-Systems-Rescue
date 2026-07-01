@@ -40,16 +40,8 @@ enumerate_drives() {
     local boot_dev=""
     [[ "$exclude_boot" == "true" ]] && boot_dev=$(boot_device)
 
-    while IFS= read -r line; do
-        local name model serial size rota tran type_raw
-        name=$(echo "$line" | awk '{print $1}')
-        model=$(echo "$line" | awk '{print $2}')
-        serial=$(echo "$line" | awk '{print $3}')
-        size=$(echo "$line" | awk '{print $4}')
-        rota=$(echo "$line" | awk '{print $5}')
-        tran=$(echo "$line" | awk '{print $6}')
-        type_raw=$(echo "$line" | awk '{print $7}')
-
+    local name model serial size rota tran type_raw remainder
+    while read -r name model serial size rota tran type_raw remainder; do
         [[ "$name" == "$boot_dev" ]] && continue
         [[ "$include_usb" != "true" && "$tran" == "usb" ]] && continue
         [[ "$type_raw" != "disk" ]] && continue
