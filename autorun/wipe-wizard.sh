@@ -59,6 +59,9 @@ read -r selection
 [[ "$selection" == "q" ]] && { log "Aborted by operator"; exit 0; }
 
 for num in $selection; do
+    if [[ ! "$num" =~ ^[0-9]+$ ]]; then
+        continue
+    fi
     idx=$((num - 1))
     if [[ $idx -ge 0 && $idx -lt ${#drives[@]} ]]; then
         selected+=("${drives[$idx]}")
