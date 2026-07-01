@@ -86,14 +86,6 @@ download_iso() {
     gpg --verify "$sig_path" "$iso_path"
 }
 
-generate_hmac_key() {
-    local key_file="$1"
-    if [[ ! -f "$key_file" ]]; then
-        openssl rand -hex 32 > "$key_file"
-        echo "==> Generated HMAC key: $key_file"
-    fi
-}
-
 build_image() {
     local out="$1"
     local iso_size_bytes
@@ -122,7 +114,6 @@ build_image() {
         sudo cp "${REPO_ROOT}/autorun/wipe-wizard.sh" "$mp/autorun/"
         sudo cp "${REPO_ROOT}/autorun/wipe-now.sh" "$mp/autorun/"
         sudo chmod +x "$mp/autorun/"*.sh
-        generate_hmac_key "$mp/hmac.key"
         sudo touch "$mp/.simsys-wipe"
         sudo umount "$mp"
         rmdir "$mp"
@@ -138,11 +129,6 @@ build_image() {
         mcopy -i "$fat_img" "${REPO_ROOT}/autorun/wipe-lib.sh" ::/autorun/
         mcopy -i "$fat_img" "${REPO_ROOT}/autorun/wipe-wizard.sh" ::/autorun/
         mcopy -i "$fat_img" "${REPO_ROOT}/autorun/wipe-now.sh" ::/autorun/
-        local hmac_tmp
-        hmac_tmp="$(mktemp)"
-        openssl rand -hex 32 > "$hmac_tmp"
-        mcopy -i "$fat_img" "$hmac_tmp" ::/hmac.key
-        rm -f "$hmac_tmp"
         : > /tmp/.simsys-wipe.marker
         mcopy -i "$fat_img" /tmp/.simsys-wipe.marker ::/.simsys-wipe
         rm -f /tmp/.simsys-wipe.marker
@@ -176,7 +162,7 @@ Boot menu:
   1. WIPE-WIZARD — Interactive, per-drive selection + confirmation
   2. WIPE-NOW    — eWaste mode, 5-min countdown then auto-wipe all
 
-Audit logs are written to the USB's /audit/ directory (JSON + HMAC).
+Audit logs are written to the USB's /audit/ directory (JSON).
 
 Physical labeling: mark with red electrical tape + "WIPE" to distinguish
 from the rescue stick.
