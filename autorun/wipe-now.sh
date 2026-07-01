@@ -113,20 +113,34 @@ for pid in "${pids[@]}"; do
 done
 
 # Collect per-drive results into audit
+result_files=()
 for entry in "${drives[@]}"; do
     IFS='|' read -r name rest <<< "$entry"
     if [[ -f "/tmp/wipe-result-${name}.json" ]]; then
-        local_result=$(cat "/tmp/wipe-result-${name}.json")
-        python3 -c "
-import json
-with open('$AUDIT_FILE') as f:
-    d = json.load(f)
-d['drives'].append(json.loads('''$local_result'''))
-with open('$AUDIT_FILE', 'w') as f:
-    json.dump(d, f, indent=2)
-" 2>/dev/null
+        result_files+=("/tmp/wipe-result-${name}.json")
     fi
 done
+
+if [[ ${#result_files[@]} -gt 0 ]]; then
+    python3 -c "
+import json
+import sys
+
+audit_file = sys.argv[1]
+with open(audit_file) as f:
+    d = json.load(f)
+
+for rf in sys.argv[2:]:
+    try:
+        with open(rf) as f_in:
+            d['drives'].append(json.load(f_in))
+    except Exception:
+        pass
+
+with open(audit_file, 'w') as f_out:
+    json.dump(d, f_out, indent=2)
+" "$AUDIT_FILE" "${result_files[@]}" 2>/dev/null
+fi
 
 printf "\n"
 if [[ $failed -eq 0 ]]; then
