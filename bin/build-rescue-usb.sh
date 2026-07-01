@@ -165,9 +165,9 @@ build_image() {
         mcopy -i "$fat_img" -s "${REPO_ROOT}/autorun" ::/
         mcopy -i "$fat_img" "${REPO_ROOT}/config/default.env" ::/
         mcopy -i "$fat_img" "${REPO_ROOT}/config/sysrescue.yaml.template" ::/sysrescue.yaml
-        : > /tmp/.simsys-rescue.marker
-        mcopy -i "$fat_img" /tmp/.simsys-rescue.marker ::/.simsys-rescue
-        rm -f /tmp/.simsys-rescue.marker
+        marker_file="$(mktemp)"
+        mcopy -i "$fat_img" "$marker_file" ::/.simsys-rescue
+        rm -f "$marker_file"
         dd if="$fat_img" of="$out" bs=1M seek="$iso_size_mb" \
             count="$WRITABLE_PART_MB" conv=notrunc status=none
         rm -f "$fat_img"

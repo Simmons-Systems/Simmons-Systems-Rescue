@@ -6,7 +6,6 @@ set -euo pipefail
 
 SSR_WIPE_VERSION="1.0.0"
 AUDIT_DIR="${AUDIT_DIR:-/run/audit}"
-HMAC_KEY_FILE="${HMAC_KEY_FILE:-/run/sysrescue-config/hmac.key}"
 
 RED='\033[1;31m'
 GREEN='\033[1;32m'
@@ -279,12 +278,6 @@ d["completed_at"] = sys.argv[3]
 with open(sys.argv[2], "w") as f:
     json.dump(d, f, indent=2)
 ' "$audit_file" "$tmp" "$now" 2>/dev/null && mv "$tmp" "$audit_file" || rm -f "$tmp"
-
-    if [[ -f "$HMAC_KEY_FILE" ]]; then
-        openssl dgst -sha256 -hmac "$(cat "$HMAC_KEY_FILE")" -hex "$audit_file" | \
-            awk '{print $NF}' > "${audit_file}.hmac"
-        log "HMAC signature written to ${audit_file}.hmac"
-    fi
 
     if command -v qrencode &>/dev/null; then
         qrencode -t ANSIUTF8 < "$audit_file" 2>/dev/null || true
