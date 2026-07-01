@@ -252,28 +252,30 @@ EOF
 
     local tmp
     tmp=$(mktemp)
-    python3 -c "
+    python3 -c '
 import json, sys
-with open('$audit_file') as f:
+with open(sys.argv[1]) as f:
     d = json.load(f)
-d['drives'].append(json.loads('''$entry'''))
-with open('$tmp', 'w') as f:
+d["drives"].append(json.loads(sys.argv[3]))
+with open(sys.argv[2], "w") as f:
     json.dump(d, f, indent=2)
-" 2>/dev/null && mv "$tmp" "$audit_file" || rm -f "$tmp"
+' "$audit_file" "$tmp" "$entry" 2>/dev/null && mv "$tmp" "$audit_file" || rm -f "$tmp"
 }
 
 finalize_audit() {
     local audit_file="$1"
     local tmp
     tmp=$(mktemp)
-    python3 -c "
-import json
-with open('$audit_file') as f:
+    local now
+    now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    python3 -c '
+import json, sys
+with open(sys.argv[1]) as f:
     d = json.load(f)
-d['completed_at'] = '$(date -u +%Y-%m-%dT%H:%M:%SZ)'
-with open('$tmp', 'w') as f:
+d["completed_at"] = sys.argv[3]
+with open(sys.argv[2], "w") as f:
     json.dump(d, f, indent=2)
-" 2>/dev/null && mv "$tmp" "$audit_file" || rm -f "$tmp"
+' "$audit_file" "$tmp" "$now" 2>/dev/null && mv "$tmp" "$audit_file" || rm -f "$tmp"
 
     if [[ -f "$HMAC_KEY_FILE" ]]; then
         openssl dgst -sha256 -hmac "$(cat "$HMAC_KEY_FILE")" -hex "$audit_file" | \
