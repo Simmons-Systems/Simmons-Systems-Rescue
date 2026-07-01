@@ -210,17 +210,20 @@ init_audit() {
     hostname=$(hostname 2>/dev/null || echo "unknown")
     AUDIT_FILE="${AUDIT_DIR}/${hostname}-${ts}.json"
 
-    cat > "$AUDIT_FILE" << EOF
-{
-  "ssr_wipe_version": "${SSR_WIPE_VERSION}",
-  "mode": "${mode}",
-  "host": $(host_info),
-  "operator": "${OPERATOR:-}",
-  "started_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "completed_at": null,
-  "drives": []
+    python3 -c "
+import json, sys
+data = {
+    'ssr_wipe_version': sys.argv[1],
+    'mode': sys.argv[2],
+    'host': json.loads(sys.argv[3]),
+    'operator': sys.argv[4],
+    'started_at': sys.argv[5],
+    'completed_at': None,
+    'drives': []
 }
-EOF
+with open(sys.argv[6], 'w') as f:
+    json.dump(data, f, indent=2)
+" "${SSR_WIPE_VERSION}" "${mode}" "$(host_info)" "${OPERATOR:-}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$AUDIT_FILE"
     echo "$AUDIT_FILE"
 }
 
