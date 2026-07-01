@@ -11,12 +11,14 @@ failures=0
 for d in /dev/sd?; do
     [[ -b "$d" ]] || continue
     section "smartctl -a $d"
-    if ! smartctl -a "$d" 2>&1; then
+    if ! out=$(smartctl -a "$d" 2>&1); then
+        echo "$out"
         # Some USB enclosures don't pass through SMART — note but don't fail
         log "WARN: smartctl failed on $d (likely USB-pass-through limitation)"
         continue
     fi
-    if smartctl -H "$d" 2> /dev/null | grep -qE "result: FAILED"; then
+    echo "$out"
+    if echo "$out" | grep -qE "result: FAILED"; then
         fail "$d reports overall SMART status FAILED"
         failures=$((failures + 1))
     fi
@@ -26,8 +28,9 @@ done
 for d in /dev/nvme?n?; do
     [[ -b "$d" ]] || continue
     section "smartctl -a $d"
-    smartctl -a "$d" 2>&1 || log "WARN: smartctl failed on $d"
-    if smartctl -H "$d" 2> /dev/null | grep -qE "result: FAILED"; then
+    out=$(smartctl -a "$d" 2>&1) || log "WARN: smartctl failed on $d"
+    echo "$out"
+    if echo "$out" | grep -qE "result: FAILED"; then
         fail "$d reports overall SMART status FAILED"
         failures=$((failures + 1))
     fi
