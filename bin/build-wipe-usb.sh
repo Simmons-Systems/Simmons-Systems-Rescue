@@ -129,9 +129,9 @@ build_image() {
         mcopy -i "$fat_img" "${REPO_ROOT}/autorun/wipe-lib.sh" ::/autorun/
         mcopy -i "$fat_img" "${REPO_ROOT}/autorun/wipe-wizard.sh" ::/autorun/
         mcopy -i "$fat_img" "${REPO_ROOT}/autorun/wipe-now.sh" ::/autorun/
-        : > /tmp/.simsys-wipe.marker
-        mcopy -i "$fat_img" /tmp/.simsys-wipe.marker ::/.simsys-wipe
-        rm -f /tmp/.simsys-wipe.marker
+        marker_file="$(mktemp)"
+        mcopy -i "$fat_img" "$marker_file" ::/.simsys-wipe
+        rm -f "$marker_file"
         dd if="$fat_img" of="$out" bs=1M seek="$iso_size_mb" \
             count="$WRITABLE_PART_MB" conv=notrunc status=none
         rm -f "$fat_img"
