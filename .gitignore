@@ -21,3 +21,6 @@ nuc-burnin-results/
 # Python venv (if anyone adds Python helpers later)
 .venv/
 __pycache__/
+
+# Feature Factory / stargazer context (local-only)
+.stargazer-*

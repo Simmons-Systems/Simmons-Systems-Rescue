@@ -19,7 +19,7 @@ The kit ships **three USB images**:
 ## Quick start
 
 ```bash
-# Build both USB images locally
+# Build the three USB images locally
 ./bin/build-rescue-usb.sh /dev/sdX     # interactive confirmation; refuses /dev/sda
 ./bin/build-memtest-usb.sh /dev/sdY
 ./bin/build-wipe-usb.sh /dev/sdZ       # NIST 800-88 disk wipe (label with red tape)

@@ -2,6 +2,9 @@
 
 This is what `bin/build-rescue-usb.sh` and `build-memtest-usb.sh` do under the
 hood, in case you want to understand or extend them.
+(`bin/build-wipe-usb.sh` follows the same flow as `build-rescue-usb.sh`,
+baking the `autorun/wipe-*.sh` scripts and an `/audit/` directory onto the
+FAT32 partition instead of the test harness.)
 
 ## `build-rescue-usb.sh` flow
 
@@ -33,12 +36,13 @@ hood, in case you want to understand or extend them.
 
 ## `build-memtest-usb.sh` flow
 
-1. **Download** Memtest86+ upstream `.usb.zip` from `memtest.org` at the
-   pinned version.
-2. **Verify SHA256** against a hardcoded expected value (placeholder in the
-   script — fill in on first build, refresh on version bump). No GPG-signed
+1. **Download** the Memtest86+ upstream hybrid ISO zip (`.iso.zip`) from
+   `memtest.org` at the pinned version. (v8.00+ retired the dedicated
+   `.usb.zip` in favor of the same hybrid ISO for BIOS + UEFI.)
+2. **Verify SHA256** against a hardcoded expected value (pinned per-version
+   in a `case` branch in the script — refresh on version bump). No GPG-signed
    manifest exists upstream.
-3. **Extract** the `.img` from inside the zip.
+3. **Extract** the hybrid `memtest.iso` from inside the zip.
 4. **Write** to target (block device via `dd`, file via `cp`).
 
 ## CI pipeline (`.github/workflows/release.yml`)
@@ -54,8 +58,10 @@ Tag-triggered (`push: tags: ['v*']`). Steps:
 
 ## Adding a new test
 
-`autorun/tests/<NN>-<name>.sh` — see [`CONTRIBUTING.md`](../CONTRIBUTING.md)
-for naming conventions and the `lib.sh` helpers you should source.
+`autorun/tests/<NN>-<name>.sh` — scripts run in lexical order, so pick the
+`NN` prefix to slot in where you want. Source `autorun/lib.sh` for the
+`section`/`log`/`pass`/`fail` helpers and follow the existing tests as
+templates.
 
 ## Bumping the upstream versions
 
