@@ -79,7 +79,7 @@ for entry in "${drives[@]}"; do
 
         verify_ok="false"
         if [[ "$result" == "success" ]]; then
-            if verify_wipe "$name"; then
+            if verify_wipe "$name" "$dtype"; then
                 verify_ok="true"
             fi
         fi

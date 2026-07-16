@@ -171,23 +171,62 @@ wipe_drive() {
 
 verify_wipe() {
     local dev="$1"
-    local samples=1024
+    local dtype="${2:-}"
+    local samples="${VERIFY_SAMPLES:-1024}"
     local block_size=512
-    local dev_size
+    local dev_size nblocks
     dev_size=$(blockdev --getsize64 "/dev/$dev" 2>/dev/null || echo 0)
     [[ "$dev_size" -eq 0 ]] && return 1
+    nblocks=$((dev_size / block_size))
+    [[ "$nblocks" -le 0 ]] && return 1
 
-    local all_zero=true
-    for _ in $(seq 1 "$samples"); do
-        local offset=$((RANDOM * RANDOM % (dev_size / block_size)))
-        local data
-        data=$(dd if="/dev/$dev" bs=$block_size skip="$offset" count=1 2>/dev/null | od -A n -t x1 | tr -d ' \n')
-        if [[ -n "$data" ]] && ! echo "$data" | grep -qP '^(00|ff)+$'; then
-            all_zero=false
-            break
+    # Expected post-wipe read pattern depends on the sanitization method:
+    #   - Overwrite methods (nwipe random — used for hdd/usb-flash and the
+    #     fallback) leave high-entropy RANDOM data. Expecting zeros there is
+    #     wrong and ALWAYS fails, so we only assert the sample is not an
+    #     unwritten all-0x00 block (the signature of a region the wipe missed).
+    #   - Erase methods (nvme sanitize block-erase, ATA secure-erase, and the
+    #     SED crypto-erase variants) canonically read back as all-0x00 (some
+    #     controllers use 0xFF), so we require that.
+    # nwipe's own --verify=last is the authoritative pattern check; this is a
+    # coarse, independent read-back sample across the whole device.
+    # NOTE: SED crypto-erase read-back is controller-dependent; it is treated
+    # as an erase-family (zero) check here to match prior behavior. If a SED
+    # controller leaves ciphertext, revisit this mapping in a follow-up.
+    local expect
+    case "$dtype" in
+        nvme-ssd | sata-ssd | nvme-ssd-sed | sata-ssd-sed) expect="zero" ;;
+        *) expect="random" ;;
+    esac
+
+    local i offset data
+    for ((i = 0; i < samples; i++)); do
+        # Full-width offset. RANDOM is only 15 bits, so the old RANDOM*RANDOM
+        # (max ~1.07e9 blocks ≈ 550GB) never sampled the tail of larger drives.
+        # Combine three draws for 45 bits of range, which covers any real drive.
+        offset=$(((RANDOM << 30 | RANDOM << 15 | RANDOM) % nblocks))
+        # A failed read must NOT be silently treated as a passing sample: with
+        # pipefail set, a dd I/O error propagates through the pipeline and we
+        # fail verification rather than skipping the block.
+        # od -v is REQUIRED: without it od collapses repeated 16-byte lines to a
+        # "*" marker, so an all-0x00 (or all-0xFF) block never yields a clean run
+        # of hex pairs and the pattern check silently fails on wiped drives.
+        if ! data=$(dd if="/dev/$dev" bs="$block_size" skip="$offset" count=1 2>/dev/null | od -A n -v -t x1 | tr -d ' \n'); then
+            return 1
+        fi
+        [[ -z "$data" ]] && return 1
+        if [[ "$expect" == "zero" ]]; then
+            if ! printf '%s\n' "$data" | grep -qP '^(00)+$|^(ff)+$'; then
+                return 1
+            fi
+        else
+            # All-0x00 => unwritten/zeroed region the overwrite did not cover.
+            if printf '%s\n' "$data" | grep -qP '^(00)+$'; then
+                return 1
+            fi
         fi
     done
-    $all_zero
+    return 0
 }
 
 host_info() {
@@ -196,8 +235,19 @@ host_info() {
     manufacturer=$(dmidecode -s system-manufacturer 2>/dev/null || echo "unknown")
     model=$(dmidecode -s system-product-name 2>/dev/null || echo "unknown")
     service_tag=$(dmidecode -s system-serial-number 2>/dev/null || echo "unknown")
-    printf '{"hostname":"%s","manufacturer":"%s","model":"%s","service_tag":"%s"}' \
-        "$hostname" "$manufacturer" "$model" "$service_tag"
+    # Build JSON with python3 so quotes/backslashes/newlines in DMI strings are
+    # properly escaped. Raw printf produced invalid JSON when a DMI value (e.g.
+    # manufacturer) contained a double-quote, which crashed init_audit's
+    # json.loads() and aborted audit initialization. Values are passed as argv
+    # (not interpolated into the program text) so they cannot inject code.
+    python3 -c '
+import json, sys
+print(json.dumps({
+    "hostname": sys.argv[1],
+    "manufacturer": sys.argv[2],
+    "model": sys.argv[3],
+    "service_tag": sys.argv[4],
+}))' "$hostname" "$manufacturer" "$model" "$service_tag"
 }
 
 init_audit() {

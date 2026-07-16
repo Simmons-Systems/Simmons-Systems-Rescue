@@ -126,7 +126,7 @@ for entry in "${confirmed[@]}"; do
 
     verify_ok="false"
     if [[ "$result" == "success" ]]; then
-        if verify_wipe "$name"; then
+        if verify_wipe "$name" "$dtype"; then
             verify_ok="true"
             log "Verification passed for /dev/$name"
         else
