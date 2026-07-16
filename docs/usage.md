@@ -87,6 +87,28 @@ can't touch):
 > of Memtest86+ that adds `mt86p.cfg` config support, finite pass counts, and
 > ACPI auto-poweroff so this stage is also walk-away.
 
+## Wipe USB — overwrite pass count
+
+Overwrite-based methods (HDD, USB flash, and the frozen-SSD fallback) default to
+a **single** random-overwrite pass. This is compliant with NIST SP 800-88 Rev. 1
+— a single pass is sufficient for modern media, and additional passes are **not
+required**. SSD erase/crypto methods ignore this setting entirely.
+
+If an organizational policy mandates stricter-than-NIST multi-pass overwrite
+(e.g. legacy DoD 5220.22-M), raise the pass count via any of these — highest
+precedence first:
+
+1. **Environment variable** (scripted/direct runs): `WIPE_OVERWRITE_ROUNDS=3`
+2. **Kernel cmdline** (per boot): add `ssr.overwrite-rounds=3` to the boot entry
+3. **Baked default**: edit `WIPE_OVERWRITE_ROUNDS` in `/wipe.env` on the FAT32
+   partition of the wipe stick (set at build time from `config/wipe.env`)
+
+Only positive integers are accepted; an invalid value is ignored (with a warning)
+and the next source is tried, so a bad value never silently reduces the pass
+count. Each extra pass costs proportionally more wall-clock time. The pass count
+actually used is recorded per drive in the JSON audit log as `overwrite_rounds`
+(`null` for erase/crypto methods).
+
 ## Troubleshooting
 
 - **Box didn't power off after 2.5h.** SystemRescue may have crashed mid-test.

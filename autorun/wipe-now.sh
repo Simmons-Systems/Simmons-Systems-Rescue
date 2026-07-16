@@ -85,6 +85,7 @@ for entry in "${drives[@]}"; do
         fi
 
         completed=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        overwrite_rounds=$(overwrite_rounds_for_type "$dtype")
 
         # Write per-drive result to a temp file for the parent to collect
         cat > "$WIPE_TMP_DIR/wipe-result-${name}.json" << DRIVEEOF
@@ -96,6 +97,7 @@ for entry in "${drives[@]}"; do
   "type": "${dtype}",
   "nist_tier": "${nist_tier}",
   "method": "${method_desc}",
+  "overwrite_rounds": ${overwrite_rounds},
   "started_at": "${started}",
   "completed_at": "${completed}",
   "verify": {"sectors_sampled": 1024, "all_zero_or_random": ${verify_ok}},

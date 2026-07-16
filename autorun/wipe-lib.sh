@@ -115,6 +115,65 @@ unfreeze_drive() {
     return 0
 }
 
+# --- Overwrite pass count (opt-in multi-pass for random-overwrite methods) ---
+# NIST SP 800-88 Rev. 1 treats a single random overwrite pass as sufficient, so
+# the default is 1. Operators can raise it for stricter organizational policies
+# (e.g. legacy DoD 5220.22-M expectations). Erase/crypto methods are unaffected.
+# Resolution order (highest precedence first):
+#   1. WIPE_OVERWRITE_ROUNDS environment variable
+#   2. ssr.overwrite-rounds=N on the kernel cmdline
+#   3. WIPE_OVERWRITE_ROUNDS=N in the baked wipe.env at the USB root
+#   4. default: 1
+# Only positive integers are accepted; an invalid value at one source is warned
+# about and the next source is tried, so a bad value never silently drops passes.
+_valid_rounds() { [[ "$1" =~ ^[1-9][0-9]*$ ]]; }
+
+resolve_overwrite_rounds() {
+    local c
+    local cmdline_file="${WIPE_CMDLINE_FILE:-/proc/cmdline}"
+    local cfg_file="${WIPE_CONFIG_FILE:-$(dirname "${BASH_SOURCE[0]}")/../wipe.env}"
+
+    # 1. environment
+    c="${WIPE_OVERWRITE_ROUNDS:-}"
+    if [[ -n "$c" ]]; then
+        if _valid_rounds "$c"; then printf '%s' "$c"; return 0; fi
+        log "WARN: ignoring invalid WIPE_OVERWRITE_ROUNDS='$c' (env)" >&2
+    fi
+
+    # 2. kernel cmdline
+    if [[ -r "$cmdline_file" ]]; then
+        c=$(tr ' ' '\n' < "$cmdline_file" 2>/dev/null | grep -E '^ssr\.overwrite-rounds=' | tail -1 || true)
+        c="${c#ssr.overwrite-rounds=}"
+        if [[ -n "$c" ]]; then
+            if _valid_rounds "$c"; then printf '%s' "$c"; return 0; fi
+            log "WARN: ignoring invalid ssr.overwrite-rounds='$c' (cmdline)" >&2
+        fi
+    fi
+
+    # 3. baked config file
+    if [[ -r "$cfg_file" ]]; then
+        c=$(grep -E '^[[:space:]]*WIPE_OVERWRITE_ROUNDS=' "$cfg_file" 2>/dev/null | tail -1 | cut -d'=' -f2 | tr -d '[:space:]' || true)
+        if [[ -n "$c" ]]; then
+            if _valid_rounds "$c"; then printf '%s' "$c"; return 0; fi
+            log "WARN: ignoring invalid WIPE_OVERWRITE_ROUNDS='$c' ($cfg_file)" >&2
+        fi
+    fi
+
+    # 4. default
+    printf '1'
+}
+
+# Overwrite pass count for the audit log: the effective rounds for random-
+# overwrite drive types, or the JSON literal "null" for erase/crypto types that
+# do not overwrite. (A frozen sata-ssd falls back to overwrite at runtime; the
+# audit classifies by nominal method, so that exceptional path records null.)
+overwrite_rounds_for_type() {
+    case "$1" in
+        nvme-ssd | nvme-ssd-sed | sata-ssd | sata-ssd-sed) printf 'null' ;;
+        *) resolve_overwrite_rounds ;;
+    esac
+}
+
 wipe_drive() {
     local dev="$1"
     local dtype="$2"
@@ -122,6 +181,8 @@ wipe_drive() {
     method_info=$(nist_method_for_type "$dtype")
     local method_desc
     method_desc=$(echo "$method_info" | cut -d'|' -f2)
+    local rounds
+    rounds=$(resolve_overwrite_rounds)
 
     log "Wiping /dev/$dev (type=$dtype, method=$method_desc)"
 
@@ -155,8 +216,8 @@ wipe_drive() {
             # ref: hdparm --security-erase-enhanced (ATA secure erase);
             # falls back to nwipe random overwrite if the drive is frozen.
             if ! unfreeze_drive "$dev"; then
-                log "FALLBACK: frozen drive, using nwipe overwrite instead"
-                nwipe --autonuke --method=random --rounds=1 --verify=last "/dev/$dev" 2>&1
+                log "FALLBACK: frozen drive, using nwipe overwrite instead ($rounds pass(es))"
+                nwipe --autonuke --method=random --rounds="$rounds" --verify=last "/dev/$dev" 2>&1
                 return $?
             fi
             local wipe_pass
@@ -171,13 +232,13 @@ wipe_drive() {
             return $?
             ;;
         hdd)
-            # ref: nwipe -m random -r 1 --verify=last (random overwrite + verify)
-            nwipe --autonuke --method=random --rounds=1 --verify=last "/dev/$dev" 2>&1
+            # ref: nwipe -m random -r <rounds> --verify=last (random overwrite + verify)
+            nwipe --autonuke --method=random --rounds="$rounds" --verify=last "/dev/$dev" 2>&1
             return $?
             ;;
         usb-flash|*)
-            # ref: nwipe -m random (best-effort random overwrite, no verify)
-            nwipe --autonuke --method=random "/dev/$dev" 2>&1
+            # ref: nwipe -m random -r <rounds> (best-effort random overwrite, no verify)
+            nwipe --autonuke --method=random --rounds="$rounds" "/dev/$dev" 2>&1
             return $?
             ;;
     esac
@@ -297,6 +358,9 @@ append_drive_audit() {
     local started="$9" completed="${10}" result="${11}"
     local verify_ok="${12:-}" errors="${13:-}"
 
+    local overwrite_rounds
+    overwrite_rounds=$(overwrite_rounds_for_type "$dtype")
+
     local entry
     entry=$(cat << EOF
     {
@@ -307,6 +371,7 @@ append_drive_audit() {
       "type": "${dtype}",
       "nist_tier": "${nist_tier}",
       "method": "${method_desc}",
+      "overwrite_rounds": ${overwrite_rounds},
       "started_at": "${started}",
       "completed_at": "${completed}",
       "verify": {"sectors_sampled": 1024, "all_zero_or_random": ${verify_ok:-false}},
