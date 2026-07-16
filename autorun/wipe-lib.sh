@@ -79,14 +79,21 @@ detect_drive_type() {
 
 nist_method_for_type() {
     local dtype="$1"
+    # Returns "NIST-tier|human-description". This is the informational/audit
+    # value — callers record field 2 (description) in the JSON audit log. The
+    # actual wipe command for each type is NOT encoded here: wipe_drive()'s case
+    # statement is the single source of truth for what runs (the reference
+    # invocation is noted in a comment beside each branch). Keeping the command
+    # in one place avoids the advertised-vs-executed drift that a duplicated
+    # command string invites.
     case "$dtype" in
-        nvme-ssd)      echo "Purge|Block Erase|nvme sanitize -a 2" ;;
-        nvme-ssd-sed)  echo "Purge|Crypto Erase|nvme sanitize -a 4" ;;
-        sata-ssd)      echo "Purge|ATA Secure Erase Enhanced|hdparm --security-erase-enhanced" ;;
-        sata-ssd-sed)  echo "Purge|Crypto Erase|sedutil-cli --revertNoErase" ;;
-        hdd)           echo "Purge|Random overwrite + verify|nwipe -m random -r 1 --verify=last" ;;
-        usb-flash)     echo "Clear|Random overwrite (best-effort)|nwipe -m random" ;;
-        *)             echo "Clear|Random overwrite (fallback)|nwipe -m random" ;;
+        nvme-ssd)      echo "Purge|Block Erase" ;;
+        nvme-ssd-sed)  echo "Purge|Crypto Erase" ;;
+        sata-ssd)      echo "Purge|ATA Secure Erase Enhanced" ;;
+        sata-ssd-sed)  echo "Purge|Crypto Erase" ;;
+        hdd)           echo "Purge|Random overwrite + verify" ;;
+        usb-flash)     echo "Clear|Random overwrite (best-effort)" ;;
+        *)             echo "Clear|Random overwrite (fallback)" ;;
     esac
 }
 
@@ -115,13 +122,14 @@ wipe_drive() {
     method_info=$(nist_method_for_type "$dtype")
     local method_desc
     method_desc=$(echo "$method_info" | cut -d'|' -f2)
-    local method_cmd
-    method_cmd=$(echo "$method_info" | cut -d'|' -f3)
 
     log "Wiping /dev/$dev (type=$dtype, method=$method_desc)"
 
+    # This case statement is the single source of truth for the wipe command
+    # per drive type; the reference invocation is noted beside each branch.
     case "$dtype" in
         nvme-ssd)
+            # ref: nvme sanitize -a 2 (block erase)
             nvme sanitize "/dev/$dev" -a 2 2>&1
             local rc=$?
             if [[ $rc -eq 0 ]]; then
@@ -133,6 +141,7 @@ wipe_drive() {
             return $rc
             ;;
         nvme-ssd-sed)
+            # ref: nvme sanitize -a 4 (crypto erase)
             nvme sanitize "/dev/$dev" -a 4 2>&1
             local rc=$?
             if [[ $rc -eq 0 ]]; then
@@ -143,6 +152,8 @@ wipe_drive() {
             return $rc
             ;;
         sata-ssd)
+            # ref: hdparm --security-erase-enhanced (ATA secure erase);
+            # falls back to nwipe random overwrite if the drive is frozen.
             if ! unfreeze_drive "$dev"; then
                 log "FALLBACK: frozen drive, using nwipe overwrite instead"
                 nwipe --autonuke --method=random --rounds=1 --verify=last "/dev/$dev" 2>&1
@@ -155,14 +166,17 @@ wipe_drive() {
             return $?
             ;;
         sata-ssd-sed)
+            # ref: sedutil-cli --revertNoErase (crypto erase)
             sedutil-cli --revertNoErase "/dev/$dev" debug 2>&1
             return $?
             ;;
         hdd)
+            # ref: nwipe -m random -r 1 --verify=last (random overwrite + verify)
             nwipe --autonuke --method=random --rounds=1 --verify=last "/dev/$dev" 2>&1
             return $?
             ;;
         usb-flash|*)
+            # ref: nwipe -m random (best-effort random overwrite, no verify)
             nwipe --autonuke --method=random "/dev/$dev" 2>&1
             return $?
             ;;
