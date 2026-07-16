@@ -114,6 +114,7 @@ build_image() {
         sudo cp "${REPO_ROOT}/autorun/wipe-wizard.sh" "$mp/autorun/"
         sudo cp "${REPO_ROOT}/autorun/wipe-now.sh" "$mp/autorun/"
         sudo chmod +x "$mp/autorun/"*.sh
+        sudo cp "${REPO_ROOT}/config/wipe.env" "$mp/wipe.env"
         sudo touch "$mp/.simsys-wipe"
         sudo umount "$mp"
         rmdir "$mp"
@@ -129,6 +130,7 @@ build_image() {
         mcopy -i "$fat_img" "${REPO_ROOT}/autorun/wipe-lib.sh" ::/autorun/
         mcopy -i "$fat_img" "${REPO_ROOT}/autorun/wipe-wizard.sh" ::/autorun/
         mcopy -i "$fat_img" "${REPO_ROOT}/autorun/wipe-now.sh" ::/autorun/
+        mcopy -i "$fat_img" "${REPO_ROOT}/config/wipe.env" ::/wipe.env
         marker_file="$(mktemp)"
         mcopy -i "$fat_img" "$marker_file" ::/.simsys-wipe
         rm -f "$marker_file"
