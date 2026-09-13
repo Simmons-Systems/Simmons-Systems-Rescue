@@ -37,10 +37,15 @@ jobs:
         run: |
           ./bin/build-memtest-usb.sh --output dist/memtest.img
 
+      - name: Build Disk Wipe wipe.img
+        run: |
+          ./bin/build-wipe-usb.sh --output dist/wipe.img
+
       - name: Compress artifacts
         run: |
           xz -T0 -9 dist/rescue.img
           xz -T0 -9 dist/memtest.img
+          xz -T0 -9 dist/wipe.img
           (cd dist && sha256sum *.img.xz > SHA256SUMS)
 
       - name: Generate build provenance attestation
