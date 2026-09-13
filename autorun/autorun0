@@ -43,7 +43,10 @@ find_results_partition() {
 
 setup_results_dir() {
     local part
-    if part="$(find_results_partition)"; then
+    if [[ -n "${RESULTS_DIR:-}" ]]; then
+        # Explicitly configured via config/default.env.
+        :
+    elif part="$(find_results_partition)"; then
         RESULTS_DIR="${part}/results"
         # Remount rw if we landed on a read-only mount
         mount -o remount,rw "$part" 2> /dev/null || true
@@ -51,7 +54,11 @@ setup_results_dir() {
         log "WARN: no writable FAT32 partition found; results will live in tmpfs (/run/results) and will NOT survive reboot"
         RESULTS_DIR=/run/results
     fi
-    mkdir -p "$RESULTS_DIR"
+    if ! mkdir -p "$RESULTS_DIR" 2> /dev/null; then
+        log "WARN: could not create RESULTS_DIR=$RESULTS_DIR; falling back to /run/results"
+        RESULTS_DIR=/run/results
+        mkdir -p "$RESULTS_DIR"
+    fi
     export RESULTS_DIR
 }
 
