@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1] - 2026-05-08
+
 ### Added
 - Initial project scaffolding.
 - SystemRescue+autorun harness (`autorun/`): inventory, SMART, memtester, stress-ng, network checks.
