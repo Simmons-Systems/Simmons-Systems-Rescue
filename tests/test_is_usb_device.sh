@@ -1,5 +1,6 @@
 #!/bin/bash
-# Test the is_usb_device logic from wipe-lib.sh
+# Tests for is_usb_device() in autorun/wipe-lib.sh (distinct from
+# test_wipe-lib.sh, which covers detect_drive_type()).
 set -euo pipefail
 
 # Find repo root
